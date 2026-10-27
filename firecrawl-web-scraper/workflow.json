@@ -1,0 +1,272 @@
+{
+  "name": "Firecrawl",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "a03940d5-e158-4191-b255-cf110bbd79fd",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.firecrawl.dev/v2/extract",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"urls\": [\n    \"https://quotes.toscrape.com/\"\n  ],\n  \"prompt\": \"Extract all quotes and their corresponding authors from the website.\",\n  \"schema\": {\n    \"type\": \"object\",\n    \"required\": [],\n    \"properties\": {\n      \"quotes\": {\n        \"type\": \"array\",\n        \"items\": {\n          \"type\": \"object\",\n          \"required\": [],\n          \"properties\": {\n            \"text\": {\n              \"type\": \"string\"\n            },\n            \"author\": {\n              \"type\": \"string\"\n            },\n            \"tags\": {\n              \"type\": \"array\",\n              \"items\": {\n                \"type\": \"string\"\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "a89e6daf-a098-4642-96dd-8ad0461d8654",
+      "name": "Extract",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "77hCZJMxmK1JrRCq",
+          "name": "Firecrawl"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.firecrawl.dev/v2/extract/{{ $json.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "72357da8-9949-4af3-a3c4-56167ef04517",
+      "name": "Check Status",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "77hCZJMxmK1JrRCq",
+          "name": "Firecrawl"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "28e22ac5-df82-4a2b-98db-2d690923fbac",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "completed",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "1f673941-5848-4888-b6c7-be8eaf958a74",
+      "name": "Still processing?"
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "seconds"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        880,
+        192
+      ],
+      "id": "4b38fc05-a6ab-4eb8-9e21-b918a2e474ee",
+      "name": "Wait",
+      "webhookId": "ec3e5407-522f-4902-a94a-3a724d5b5d25"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data.quotes",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        880,
+        -160
+      ],
+      "id": "4fedc052-5775-4e82-bd93-3ea7b611cdc3",
+      "name": "Split Out Quotes"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Quote": "={{ $json.text }}",
+            "Author": "={{ $json.author }}",
+            "Tags": "={{ $json.tags.join(', ') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Quote",
+              "displayName": "Quote",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Author",
+              "displayName": "Author",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tags",
+              "displayName": "Tags",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1088,
+        -160
+      ],
+      "id": "756f5da0-1dcb-42e9-9418-72411261ae99",
+      "name": "Save to Google Sheets"
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract": {
+      "main": [
+        [
+          {
+            "node": "Check Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Status": {
+      "main": [
+        [
+          {
+            "node": "Still processing?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Still processing?": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Split Out Quotes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Check Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out Quotes": {
+      "main": [
+        [
+          {
+            "node": "Save to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 0,
+  "meta": null
+}
